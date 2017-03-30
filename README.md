@@ -1,7 +1,6 @@
 ## For what
 Understanding the Application about Deep Learning in Text Matching Area & Implement Codes about the Classical Methods
 
-
 ## People in these area
 - [Po-Sen Huang](https://posenhuang.github.io/full_publication.html)
 - [Jianfeng Gao](https://www.microsoft.com/en-us/research/people/jfgao/)
@@ -53,13 +52,26 @@ Architecture for Community-based Question Answering](https://ijcai.org/Proceedin
 <br> (D)CNN+MLP(tensor layer); 
 <br> 基于语义表达的结构
 
+-----
+> [**DeepMatch**]()
+<br> [A Deep Architecture for Matching Short Texts](https://papers.nips.cc/paper/5019-a-deep-architecture-for-matching-short-texts.pdf)
+<br> NIPS 2013
+<br> [Reviews](https://media.nips.cc/nipsbooks/nipspapers/paper_files/nips26/reviews/697.html)
+<br> 目的：建模更复杂的匹配关系。最早的基于匹配的结构把。
+<br> 结合了localness和hierarchy intrinsic，基于点积的网络不好做的，最大的亮点是用话题模型建立网络吧。
 
-## Related talks and papers
+------
+> [**DeepMatch_tree**]()
+<br> [Syntax-based Deep Matching of Short Texts](https://arxiv.org/pdf/1503.02427.pdf)
+
+
+## Related talks and books
 [Deep Learning for Web Search and
 Natural Language Processing](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/wsdm2015.v3.pdf)
-
-
-
+[Deep Learning for Information Retrieval(Sigir 2016 Tutorial)](http://www.hangli-hl.com/uploads/3/4/4/6/34465961/deep_learning_for_information_retrieval.pdf)
+[Semantic Matching in Search (Sigir 2014 Workshop)](http://www.hangli-hl.com/uploads/3/4/4/6/34465961/semantic_matching_in_search.pdf)
+[Semantic Matching in Search (Book 2014)](http://www.bigdatalab.ac.cn/~junxu/publications/SemanticMatchingInSearch_2014.pdf)
+ 
 ## Downloads 
 > [DSSM/Sent2Vec Release Version](https://www.microsoft.com/en-us/download/details.aspx?id=52365)
 <br> MSRA发布的Sent2Vec发行版
@@ -74,7 +86,11 @@ Natural Language Processing](https://www.microsoft.com/en-us/research/wp-content
 * [Stack Exchange Data Dump](https://archive.org/details/stackexchange "Stack Exchange")
 * [Europarl: A Parallel Corpus for Statistical Machine Translation](http://www.iccs.inf.ed.ac.uk/~pkoehn/publications/europarl-mtsummit05.pdf "Philipp Koehn") ([www.statmt.org/europarl/](http://www.statmt.org/europarl/))
 * [RTE Knowledge Resources](http://aclweb.org/aclwiki/index.php?title=RTE_Knowledge_Resources)
+* [Kaggle Quora Question Pairs]()
 
+
+## Competition
+* [Kaggle Quora Question Pairs](https://www.kaggle.com/c/quora-question-pairs)
 
 ## Pretrained Models
 * [Model Zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo "Berkeley Vision and Learning Center")
