@@ -1,5 +1,16 @@
 ## For what
-Understanding the Application about Deep Learning in Text Matching Area & Implement Codes about the Classical Methods
+Understanding the Methods in Text Matching Area Including Key-words based Matching Model & Latent Semantic Matching Model.
+Implement the Classical Methods.
+
+## Categories
+- Key-words based methods
+    - tf-idf model
+    - words common rate model
+    - find the most important word with adding syntax information
+- Semantic methods
+    - term bag models
+    - structure considered models
+- Features based methods
 
 ## People in these area
 - [Po-Sen Huang](https://posenhuang.github.io/full_publication.html)
@@ -8,11 +19,11 @@ Understanding the Application about Deep Learning in Text Matching Area & Implem
 - [Hang Li](http://www.hangli-hl.com/index.html)
 
 ## Survey
-> [深度文本匹配综述](http://kns.cnki.net/KCMS/detail/detail.aspx?dbcode=CJFQ&dbname=CAPJLAST&filename=JSJX20160920002&uid=WEEvREcwSlJHSldRa1FhdXNXYXJvK0FZMlhXUDZsYnBMQjhHTElMeE1jRT0=$9A4hF_YAuvQ5obgVAqNKPCYcEjKensW4ggI8Fm4gTkoUKaID8j8gFw!!&v=MzA2OTFscVdNMENMTDdSN3FlWU9ac0ZDcmxWYnZPSTFzPUx6N0Jkckc0SDlmTXBvMUZaT3NOWXc5TXptUm42ajU3VDNm)
+> [深度文本匹配综述(A Survey on Deep Text Matching)](http://kns.cnki.net/KCMS/detail/detail.aspx?dbcode=CJFQ&dbname=CAPJLAST&filename=JSJX20160920002&uid=WEEvREcwSlJHSldRa1FhdXNXYXJvK0FZMlhXUDZsYnBMQjhHTElMeE1jRT0=$9A4hF_YAuvQ5obgVAqNKPCYcEjKensW4ggI8Fm4gTkoUKaID8j8gFw!!&v=MzA2OTFscVdNMENMTDdSN3FlWU9ac0ZDcmxWYnZPSTFzPUx6N0Jkckc0SDlmTXBvMUZaT3NOWXc5TXptUm42ajU3VDNm)
 <br> 
 
 
-## Methods & Papers
+## Methods & Papers about Semantic Methods
 
 > [**DSSM**](./DSSM/dssm.py)
 <br> [Learning Deep Structured Semantic Models for Web Search using Clickthrough Data](https://posenhuang.github.io/papers/cikm2013_DSSM_fullversion.pdf)
@@ -64,14 +75,19 @@ Architecture for Community-based Question Answering](https://ijcai.org/Proceedin
 > [**DeepMatch_tree**]()
 <br> [Syntax-based Deep Matching of Short Texts](https://arxiv.org/pdf/1503.02427.pdf)
 
+## Methods & Papers about Key Words Based Methods
+> [****]()
+<br> []()
 
 ## Related talks and books
-[Deep Learning for Web Search and
+* [Deep Learning for Web Search and
 Natural Language Processing](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/wsdm2015.v3.pdf)
-[Deep Learning for Information Retrieval(Sigir 2016 Tutorial)](http://www.hangli-hl.com/uploads/3/4/4/6/34465961/deep_learning_for_information_retrieval.pdf)
-[Semantic Matching in Search (Sigir 2014 Workshop)](http://www.hangli-hl.com/uploads/3/4/4/6/34465961/semantic_matching_in_search.pdf)
-[Semantic Matching in Search (Book 2014)](http://www.bigdatalab.ac.cn/~junxu/publications/SemanticMatchingInSearch_2014.pdf)
- 
+* [Deep Learning for Information Retrieval(Sigir 2016 Tutorial)](http://www.hangli-hl.com/uploads/3/4/4/6/34465961/deep_learning_for_information_retrieval.pdf)
+* [Semantic Matching in Search (Sigir 2014 Workshop)](http://www.hangli-hl.com/uploads/3/4/4/6/34465961/semantic_matching_in_search.pdf)
+* [Semantic Matching in Search (Book 2014)](http://www.bigdatalab.ac.cn/~junxu/publications/SemanticMatchingInSearch_2014.pdf)
+* [gensim notebook](https://github.com/RaRe-Technologies/gensim/tree/develop/docs/notebooks)
+
+
 ## Downloads 
 > [DSSM/Sent2Vec Release Version](https://www.microsoft.com/en-us/download/details.aspx?id=52365)
 <br> MSRA发布的Sent2Vec发行版
@@ -86,11 +102,12 @@ Natural Language Processing](https://www.microsoft.com/en-us/research/wp-content
 * [Stack Exchange Data Dump](https://archive.org/details/stackexchange "Stack Exchange")
 * [Europarl: A Parallel Corpus for Statistical Machine Translation](http://www.iccs.inf.ed.ac.uk/~pkoehn/publications/europarl-mtsummit05.pdf "Philipp Koehn") ([www.statmt.org/europarl/](http://www.statmt.org/europarl/))
 * [RTE Knowledge Resources](http://aclweb.org/aclwiki/index.php?title=RTE_Knowledge_Resources)
-* [Kaggle Quora Question Pairs]()
+* [**Kaggle Quora Question Pairs**]()
 
 
 ## Competition
 * [Kaggle Quora Question Pairs](https://www.kaggle.com/c/quora-question-pairs)
+
 
 ## Pretrained Models
 * [Model Zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo "Berkeley Vision and Learning Center")

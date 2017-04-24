@@ -5,6 +5,16 @@ import pandas as pd
 
 
 def data_iterator(orig_X, orig_y=None, orig_label=None, batch_size=10, shuffle=False):
+    '''
+
+    :param orig_X:
+    :param orig_y:
+    :param orig_label:
+    :param batch_size:
+    :param shuffle:
+    :return:
+    '''
+
     # Optionally shuffle the data before training
     if shuffle:
         indices = np.random.permutation(len(orig_X))

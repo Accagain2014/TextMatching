@@ -4,15 +4,18 @@ import tensorflow as tf
 import pandas as pd
 import numpy as np
 import time
+import sklearn
 
 import utils
+import tools
 
 class DSSM(object):
     '''
         Impletement DSSM Model in the Paper:  Learning Deep Structured Semantic Models for Web Search using Clickthrough Data
     '''
     def __init__(self, hash_tokens_nums=3000, dnn_layer_nums=1, dnn_hidden_node_nums=50, feature_nums=50,
-                batch_size=10, neg_nums=4, learning_rate=0.5, max_epochs=200):
+                batch_size=10, neg_nums=4, learning_rate=0.5, max_epochs=200, loss_kind='mcl', w_init=0.1, \
+                 save_model_path='./', mlp_hidden_node_nums=32, mlp_layer_nums=2):
         '''
             paras:
                 hash_tokens_nums: word hash后词的个数
@@ -23,7 +26,13 @@ class DSSM(object):
                 neg_nums: 负样本的个数
                 learning_rate: 学习率
                 max_epoch: 迭代次数
+                loss_kind: 'mcl': maximize the condition likelihood，极大似然估计条件概率; 'log_loss'：交叉熵的方式计算loss
+                w_init: 权重初始化
+                save_model_path: 保存验证集上最优模型的文件路劲
+                mlp_hidden_node_nums: 学习到的隐向量连接后加mlp层的节点数
+                mlp_layer_nums： mlp层的层数
         '''
+
         self.hash_token_nums = hash_tokens_nums
         self.dnn_layer_nums = dnn_layer_nums
         self.dnn_hidden_node_nums = dnn_hidden_node_nums
@@ -32,18 +41,36 @@ class DSSM(object):
         self.neg_nums = neg_nums
         self.learning_rate = learning_rate
         self.max_epochs = max_epochs
+        self.loss_kind = loss_kind
+        self.positive_weights = 1
+        self.w_init = w_init
+        self.save_model_path = save_model_path
+        self.mlp_hidden_node_nums = mlp_hidden_node_nums
+        self.mlp_layer_nums = mlp_layer_nums
 
         '''
             query and doc 使用不同的网络结构，像论文中提到的那样
         '''
-        self.input_q = tf.placeholder(tf.float32, shape=[batch_size, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
-        self.input_doc = tf.placeholder(tf.float32, shape=[batch_size, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
-        self.label = tf.placeholder(tf.float32, shape=[batch_size])
+        self.input_q = tf.placeholder(tf.float32, shape=[None, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
+        self.input_doc = tf.placeholder(tf.float32, shape=[None, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
+        self.label = tf.placeholder(tf.float32, shape=[None])
 
-        self.predict_op = self.create_model_op()
-        self.loss_op = self.create_loss_op()
-        self.train_op = self.create_train_op()
+        self.predict_doc = None
+        self.predict_query = None
 
+        self.relevance = self.create_model_op()
+
+        if self.loss_kind == 'mlc':
+            self.loss = self.create_loss_max_condition_lh_op()
+        elif self.loss_kind == 'log_loss':
+            self.loss = self.create_log_loss_op()
+        else:
+            pass
+
+        self.train = self.create_train_op()
+
+    def set_positive_weights(self, positive_weights):
+        self.positive_weights = positive_weights
 
     def create_model_op(self):
 
@@ -65,7 +92,7 @@ class DSSM(object):
                 result = input_dict[one_structrue]
                 for i in range(len(node_nums)-1):
                     w = tf.Variable(
-                        tf.random_uniform([node_nums[i], node_nums[i+1]], -0.001, 0.001), name='weights'+str(i)
+                        tf.random_uniform([node_nums[i], node_nums[i+1]], -self.w_init, self.w_init), name='weights'+str(i)
                     )
                     # 网络比较深，参数比较多时，注意w取值应该比较小，学习率适当增大
                     b = tf.Variable(tf.zeros([node_nums[i+1]]), name="bias"+str(i))
@@ -75,23 +102,58 @@ class DSSM(object):
 
         self.predict_query = features[0]
         self.predict_doc = features[1]
-        norms1 = tf.sqrt(tf.reduce_sum(tf.square(features[0]), 1, keep_dims=False))
-        norms2 = tf.sqrt(tf.reduce_sum(tf.square(features[1]), 1, keep_dims=False))
-        self.relevance = tf.reduce_sum(features[0] * features[1], 1) / norms1 / norms2
-        return self.relevance
 
-
-    def create_loss_op(self):
         '''
+            为了对学习到了两个向量进行相似度打分，加一个mlp层, 最后一层全连接
+
+        '''
+        result = tf.concat(features, 1)
+        print result
+
+        with tf.variable_scope('mlp'):
+            node_nums = [self.feature_nums*2] + [self.mlp_hidden_node_nums] * self.mlp_layer_nums + [1]
+            for i in range(len(node_nums) - 1):
+                w = tf.Variable(
+                    tf.random_uniform([node_nums[i], node_nums[i + 1]], -self.w_init, self.w_init),
+                    name='weights' + str(i)
+                )
+                b = tf.Variable(tf.zeros([node_nums[i + 1]]), name="bias" + str(i))
+                result = tf.matmul(result, w) + b
+                result = tf.nn.sigmoid(result)
+
+
+        # norms1 = tf.sqrt(tf.reduce_sum(tf.square(features[0]), 1, keep_dims=False))
+        # norms2 = tf.sqrt(tf.reduce_sum(tf.square(features[1]), 1, keep_dims=False))
+        # relevance =  tf.reduce_sum(features[0] * features[1], 1) / norms1 / norms2
+
+        # w_r = tf.Variable(tf.random_uniform([1], -self.w_init, self.w_init), name="weight-of-relevance")
+        # b_r = tf.Variable(tf.zeros([1]), name="bais-of-relevance")
+        # relevance = relevance * w_r + b_r
+        # relevance = tf.nn.softmax(relevance)
+
+        return result
+
+
+    def create_loss_max_condition_lh_op(self):
+        '''
+            用极大似然的方法计算, 正例的条件概率
             计算相关文档的loss, gama经验值也用来学习
         :return:
         '''
         gama = tf.Variable(tf.random_uniform([1]), name="gama")
-        ret = self.predict_op * gama
+        ret = self.relevance * gama
         ret = tf.reshape(ret, [-1, self.neg_nums+1])
         ret = tf.log(tf.nn.softmax(ret))
-        ret = tf.reduce_sum(ret, 0)
-        return -tf.gather(ret, 0)
+        ret = tf.reduce_sum(ret, 0) # 行相加
+        return -tf.gather(ret, 0) # 得到第一个，也即是正例的loss
+
+
+    def create_log_loss_op(self):
+        '''
+            计算log_loss, 也就是交叉熵
+        :return:
+        '''
+        return tf.reduce_sum(tf.contrib.losses.log_loss(self.relevance, self.label))
 
 
     def create_train_op(self):
@@ -99,7 +161,7 @@ class DSSM(object):
             采用梯度下降方式学习
         :return:
         '''
-        return tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_op)
+        return tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
 
 
     def creat_feed_dict(self, query_batch, doc_batch, label_batch):
@@ -116,7 +178,7 @@ class DSSM(object):
         }
 
 
-    def run_epoch(self, sess, query_input, doc_input, labels):
+    def run_epoch(self, sess, query_input, doc_input, labels, is_valid=False):
         '''
         计算一次迭代过程
         :param sess:
@@ -126,20 +188,31 @@ class DSSM(object):
         :return:
         '''
         average_loss = 0
+        step = 0
         for step, (query, doc, label) in enumerate(
                 utils.data_iterator(query_input, doc_input, labels, self.batch_size)
             ):
             # print query[1, 1], doc[1, 1], label[1]
             self.creat_feed_dict(query, doc, label)
-            _, loss_value, predict_query, predict_doc, relevance = sess.run([self.train_op, self.loss_op, self.predict_query\
-                    , self.predict_doc, self.relevance], feed_dict=self.feed_dict)
+            self.set_positive_weights(len(query))
+
+            if not is_valid:
+                # 跑这个train的时候 才更新W
+                _, loss_value, predict_query, predict_doc, relevance = sess.run([self.train, self.loss, self.predict_query\
+                        , self.predict_doc, self.relevance], feed_dict=self.feed_dict)
+            else:
+
+                loss_value, relevance = sess.run([self.loss, self.relevance], feed_dict=self.feed_dict)
+                # print 'Chcek ', sklearn.metrics.log_loss(label, relevance), loss_value
+
             average_loss += loss_value
             #print 'step ', step, loss_value
             #print 'predict ', predict_query[0], predict_doc[0], relevance[0]
-        return average_loss / step
+        return average_loss / (step+1), relevance
 
 
-    def fit(self, sess, query_input, doc_input, labels):
+    def fit(self, sess, query_input, doc_input, labels, valid_q_input=None, valid_d_input=None, valid_labels=None, \
+            load_model=False):
         '''
         模型入口
         :param sess:
@@ -149,14 +222,40 @@ class DSSM(object):
         :return:
         '''
         losses = []
+        best_loss = 99999
+        saver = tf.train.Saver()
+        if load_model:
+            saver.restore(sess, self.save_model_path)
+            start_time = time.time()
+            valid_loss, _ = self.run_epoch(sess, valid_q_input, valid_d_input, valid_labels, is_valid=True)
+            duration = time.time() - start_time
+            print('valid loss = %.5f (%.3f sec)'
+                  % (valid_loss, duration))
+            losses.append(valid_loss)
+            return losses
+
         for epoch in range(self.max_epochs):
             start_time = time.time()
-            average_loss = self.run_epoch(sess, query_input, doc_input, labels)
+            average_loss, _ = self.run_epoch(sess, query_input, doc_input, labels)
             duration = time.time() - start_time
 
-            print('Epoch %d: loss = %.5f (%.3f sec)'
-             % (epoch, average_loss, duration))
+            if (epoch+1) % 100 == 0:
+                if valid_labels is None:
+                    print('Epoch %d: loss = %.5f (%.3f sec)'
+                        % (epoch+1, average_loss, duration))
+                else:
+                    valid_loss, _ = self.run_epoch(sess, valid_q_input, valid_d_input, valid_labels, is_valid=True)
+                    if valid_loss < best_loss:
+                        best_loss = valid_loss
+                        saver.save(sess, self.save_model_path)
+                    duration = time.time() - start_time
+                    print('Epoch %d: loss = %.5f valid loss = %.5f (%.3f sec)'
+                          % (epoch+1, average_loss, valid_loss, duration))
+
             losses.append(average_loss)
+
+        if not valid_labels is None:
+            print 'Final valid loss: ', best_loss
         return losses
 
     def predict(self, sess, query, doc, labels):
@@ -170,6 +269,8 @@ class DSSM(object):
         '''
         self.creat_feed_dict(query, doc, labels)
         predict = sess.run(self.relevance, feed_dict=self.feed_dict)
+        return predict
+
 
 
 def test_dssm():
@@ -179,12 +280,14 @@ def test_dssm():
     '''
     with tf.Graph().as_default():
         tf.set_random_seed(1)
+
         model = DSSM(hash_tokens_nums=30000, dnn_layer_nums=2, dnn_hidden_node_nums=300, feature_nums=128,
                 batch_size=10, neg_nums=4, learning_rate=0.02, max_epochs=500)
         sess = tf.Session()
         init = tf.initialize_all_variables()
         sess.run(init)
         np.random.seed(1)
+
         query = np.random.rand(500, 30000)
         doc = np.random.rand(500, 30000)
         label = np.array([1, 0, 0, 0, 0] * 100)
@@ -195,7 +298,7 @@ def test_dssm():
 
         losses = model.fit(sess, query, doc, label)
 
-    print losses[-1]
+    #print losses[-1]
 
 
 if __name__ == '__main__':

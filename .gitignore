@@ -1,5 +1,7 @@
 # Personal ignore
 dataset/
+*.pkl
+result/
 
 # Compiled source #
 ###################
