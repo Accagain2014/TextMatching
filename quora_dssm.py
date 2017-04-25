@@ -93,7 +93,7 @@ def quora_dssm(train_input_file, test_input_file):
 
 if __name__ == '__main__':
 
-    train_file = '/Users/cms/UCAS/material/paper/TextMatching/dataset/quora/train_porter_rm_stopwords.csv'
-    test_file = '/Users/cms/UCAS/material/paper/TextMatching/dataset/quora/test_porter_rm_stopwords.csv'
+    train_file = '/home/ada/chenmaosen/quora-question-Pairs/dataset/train_porter_rm_stopwords.csv'
+    test_file = '/home/ada/chenmaosen/quora-question-Pairs/dataset/test_porter_rm_stopwords.csv'
 
     quora_dssm(train_file, test_file)
