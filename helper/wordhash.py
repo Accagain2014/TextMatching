@@ -2,6 +2,7 @@
 import numpy as np
 import pickle
 import distance
+from scipy import sparse as sps
 
 class WordHash(object):
 
@@ -9,7 +10,7 @@ class WordHash(object):
         Implement word hash methods mentioned in the paper: Learning Deep Structured Semantic Models for Web Search using Clickthrough Data
     '''
 
-    def __init__(self, words, n_gram=3, marks='#', load_from_file=False, load_file=None, dump_to_file=False, dump_file=None):
+    def __init__(self, words, n_gram=3, marks='#', load_from_file=False, dump_to_file=False, file=None):
         '''
 
         :param words: origin vacabulary
@@ -20,7 +21,7 @@ class WordHash(object):
         '''
 
         if load_from_file:
-            with open(load_file, 'rb') as fr:
+            with open(file, 'rb') as fr:
                 self.__dict__ = pickle.load(fr).__dict__  # load an object
             return
 
@@ -41,7 +42,7 @@ class WordHash(object):
         self._get_hash_dict()
 
         if dump_to_file:
-            with open(dump_file, 'wb') as fw:
+            with open(file, 'wb') as fw:
                 pickle.dump(self, fw)
 
 
@@ -86,10 +87,11 @@ class WordHash(object):
         :param sentences: sentences to be handled to get n_gram term counting matrix
         :param is_dump: whether dump the result to file or not
         :param dump_file: dump file name
-        :return: n_gram term counting matrix, shapes(sentences number, n_gram term size)
+        :return: n_gram term counting sparse matrix, shapes(sentences number, n_gram term size)
         '''
 
-        n_gram_count = np.zeros((len(sentences), self.n_gram_size))
+        # n_gram_count = np.zeros((len(sentences), self.n_gram_size))
+        n_gram_count = sps.lil_matrix((len(sentences), self.n_gram_size))
         sen_cnt = 0
         for one_sen in sentences:
             one_sen = one_sen.strip().split()
@@ -98,24 +100,27 @@ class WordHash(object):
                 one_word = self.marks+one_word.lower()+self.marks
                 splited_n_gram = self._split(one_word)
                 n_gram_index = map(lambda x: self.n_gram_index_map[x], splited_n_gram)
-                n_gram_count[sen_cnt, n_gram_index] += 1
+                # n_gram_count[sen_cnt, n_gram_index] += 1
+                for one_n_gram_index in n_gram_index:
+                    n_gram_count[sen_cnt, one_n_gram_index] += 1
             sen_cnt += 1
         if is_dump:
             with open(dump_file, 'wb') as fw:
-                pickle.dump(n_gram_count, fw)
+                pickle.dump(n_gram_count.tocsr(), fw)
             print 'Dump to file ', dump_file, ' done.'
         print 'Get n_gram count matrix done, shape with: ', n_gram_count.shape
-        return n_gram_count
+        return n_gram_count.tocsr()
 
 def test_WordHash():
 
     sentence = 'Key words based text matching methods and semantic matching methods'
 
     print sentence.split()
-    wordhash = WordHash(sentence.split(), load_from_file=False, load_file='n_gram_term_index_mapping.pkl', dump_to_file=True, dump_file='n_gram_term_index_mapping.pkl')
+    wordhash = WordHash(sentence.split(), load_from_file=False, load_file='n_gram_term_index_mapping.pkl', dump_to_file=False, dump_file='n_gram_term_index_mapping.pkl')
     print wordhash.n_gram_index_map
     n_gram_matrix = wordhash.get_n_gram_count(['key words text matching methods', 'semantic text matching methods'])
-    print distance.cos_dis(n_gram_matrix[0], n_gram_matrix[1])
+
+    print distance.cos_dis(n_gram_matrix[0].toarray().reshape([-1]), n_gram_matrix[1].toarray().reshape([-1]))
 
 if __name__ == '__main__':
     test_WordHash()

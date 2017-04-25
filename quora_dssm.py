@@ -2,9 +2,15 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+from sklearn.datasets import dump_svmlight_file
+from scipy import sparse as sps
+from sklearn.model_selection import KFold
+from sklearn.utils import shuffle
 
 from DSSM.dssm import DSSM
 from helper.wordhash import WordHash
+import tools
+import config
 
 def get_words(sentences):
     words = []
@@ -16,10 +22,12 @@ def get_words(sentences):
 
 
 def quora_dssm(train_input_file, test_input_file):
+
     '''
     测试函数
     :return:
     '''
+    seed = 2222
 
     train_ori = pd.read_csv(train_input_file)
     test_ori = pd.read_csv(test_input_file, nrows=1001)
@@ -32,6 +40,56 @@ def quora_dssm(train_input_file, test_input_file):
     q = ['question1', 'question2']
     words = []
 
+    wordhash = WordHash(words, load_from_file=True, \
+                        dump_to_file=True, file='n_gram_term_index_mapping.pkl')
+
+    train_ori_q1 =  wordhash.get_n_gram_count(train_ori[q[0]].values, is_dump=True, dump_file='result/train_q1_ngram_counting_matrix.pkl')
+    train_ori_q2 = wordhash.get_n_gram_count(train_ori[q[1]].values, is_dump=True, dump_file='result/train_q2_ngram_counting_matrix.pkl')
+
+    test_q1 = wordhash.get_n_gram_count(test[q[0]].values, is_dump=True, dump_file='result/test_q1_ngram_counting_matrix.pkl')
+    test_q2 = wordhash.get_n_gram_count(test[q[1]].values, is_dump=True, dump_file='result/test_q2_ngram_counting_matrix.pkl')
+
+    X = sps.hstack(
+        [train_ori_q1, train_ori_q2]
+    ).tocsr()
+    y = train_ori['is_duplicate'].values[:]
+
+    X_t = sps.hstack(
+        [test_q1, test_q2]
+    ).tocsr()
+    y_t = test['is_duplicate'].values[:]
+
+    '''
+        Get origin train and test svm format file.
+    '''
+    dump_svmlight_file(X, y, 'result/train_ori_n_gram_counting_sparse_matrix.svm')
+    dump_svmlight_file(X_t, y_t, 'result/test_n_gram_counting_sparse_matrix.svm')
+
+
+    '''
+        Get KFold train and valid dataset.
+    '''
+    skf = KFold(n_splits=5, shuffle=True, random_state=seed).split(X)
+    for ind_tr, ind_te in skf:
+        X_train = X[ind_tr]
+        X_valid = X[ind_te]
+
+        y_train = y[ind_tr]
+        y_valid = y[ind_te]
+        break
+
+    X_train, y_train = tools.oversample(X_train.tocsr(), y_train, p=0.165)
+    X_valid, y_valid = tools.oversample(X_valid.tocsr(), y_valid, p=0.165)
+
+    X_train, y_train = shuffle(X_train, y_train, random_state=seed)
+
+    dump_svmlight_file(X_train, y_train, 'result/oversample_train_n_gram_counting_sparse_matrix.svm')
+    dump_svmlight_file(X_valid, y_valid, 'result/oversample_valid_n_gram_counting_sparse_matrix.svm')
+
+    print 'Dump to svm format done.'
+
+
+    '''
     for _ in q:
         train_ori[_] = train_ori[_].astype(str)
         test[_] = test_ori[_].astype(str)
@@ -40,13 +98,13 @@ def quora_dssm(train_input_file, test_input_file):
 
     print 'Sum words: ', len(words), ' sum diff words: ', len(set(words))
 
-    wordhash = WordHash(words, load_from_file=False, load_file='n_gram_term_index_mapping.pkl', \
+    wordhash = WordHash(words, load_from_file=True, load_file='n_gram_term_index_mapping.pkl', \
                         dump_to_file=True, dump_file='n_gram_term_index_mapping.pkl')
+
 
     split_point = int(0.7 * len(train_ori))
     train = train_ori[:split_point]
     valid = train_ori[split_point:]
-
 
     train_q1 = wordhash.get_n_gram_count(train[q[0]].values, is_dump=True, dump_file='result/train_q1_ngram_counting_matrix.pkl')
     train_q2 = wordhash.get_n_gram_count(train[q[1]].values, is_dump=True, dump_file='result/train_q2_ngram_counting_matrix.pkl')
@@ -59,6 +117,7 @@ def quora_dssm(train_input_file, test_input_file):
     test_q1 = wordhash.get_n_gram_count(test[q[0]].values, is_dump=True, dump_file='result/test_q1_ngram_counting_matrix.pkl')
     test_q2 = wordhash.get_n_gram_count(test[q[1]].values, is_dump=True, dump_file='result/test_q2_ngram_counting_matrix.pkl')
     test_label = test['is_duplicate'].values
+
 
     print 'train shape: ', train_q1.shape, 'valid shape: ', valid_q1.shape
     print 'test shape: ', test_q1.shape
@@ -89,11 +148,11 @@ def quora_dssm(train_input_file, test_input_file):
 
         test['is_duplicate'] = model.predict(sess, test_q1, test_q2, test_label)
         test[['test_id', 'is_duplicate']].to_csv('result/out.csv', index=False)
-
+    '''
 
 if __name__ == '__main__':
 
-    train_file = '/home/ada/chenmaosen/quora-question-Pairs/dataset/train_porter_rm_stopwords.csv'
-    test_file = '/home/ada/chenmaosen/quora-question-Pairs/dataset/test_porter_rm_stopwords.csv'
+    train_file = config.train_file
+    test_file = config.test_file
 
     quora_dssm(train_file, test_file)

@@ -2,6 +2,7 @@
 dataset/
 *.pkl
 result/
+config.py
 
 # Compiled source #
 ###################
