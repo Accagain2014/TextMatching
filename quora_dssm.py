@@ -68,8 +68,8 @@ def quora_dssm(train_input_file, test_input_file):
         tf.set_random_seed(1)
 
         model = DSSM(hash_tokens_nums=n_gram_size, dnn_layer_nums=5, dnn_hidden_node_nums=10, feature_nums=10,
-                batch_size=10, neg_nums=0, learning_rate=0.1, max_epochs=200, loss_kind='log_loss', w_init=1,
-                     save_model_path='result/save-model')
+                batch_size=10, neg_nums=0, learning_rate=0.1, max_epochs=400, loss_kind='log_loss', w_init=0.01,
+                     save_model_path='result/save-model', mlp_hidden_node_nums=32, mlp_layer_nums=2)
         sess = tf.Session()
         init = tf.initialize_all_variables()
         sess.run(init)
@@ -90,7 +90,6 @@ def quora_dssm(train_input_file, test_input_file):
         test['is_duplicate'] = model.predict(sess, test_q1, test_q2, test_label)
         test[['test_id', 'is_duplicate']].to_csv('result/out.csv', index=False)
 
-    print losses[-1]
 
 if __name__ == '__main__':
 

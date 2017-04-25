@@ -1,6 +1,7 @@
 #coding=utf-8
 
 import numpy as np
+import math
 
 def softmax(x):
     if len(x.shape) > 1:
@@ -26,5 +27,7 @@ def sigmoid(x):
 
 def sigmoid_grad(f):
     f = f * (1 - f)
-
     return f
+
+def xavier_init(n1, n2):
+    return math.sqrt(6.0/(n1+n2))

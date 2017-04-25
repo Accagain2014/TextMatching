@@ -91,14 +91,17 @@ class DSSM(object):
                             [self.dnn_hidden_node_nums] * self.dnn_layer_nums + [self.feature_nums]
                 result = input_dict[one_structrue]
                 for i in range(len(node_nums)-1):
+                    now_w_init = tools.xavier_init(node_nums[i], node_nums[i+1])
                     w = tf.Variable(
-                        tf.random_uniform([node_nums[i], node_nums[i+1]], -self.w_init, self.w_init), name='weights'+str(i)
+                        tf.random_uniform([node_nums[i], node_nums[i+1]], -now_w_init, now_w_init), name='weights'+str(i)
                     )
                     # 网络比较深，参数比较多时，注意w取值应该比较小，学习率适当增大
                     b = tf.Variable(tf.zeros([node_nums[i+1]]), name="bias"+str(i))
                     result = tf.matmul(result, w) + b
-                    result = tf.nn.sigmoid(result)
-                    features.append(result)
+                    #result = tf.nn.sigmoid(result)
+                    #result = tf.nn.relu(result)
+                    result = tf.nn.tanh(result)
+                features.append(result)
 
         self.predict_query = features[0]
         self.predict_doc = features[1]
@@ -107,20 +110,21 @@ class DSSM(object):
             为了对学习到了两个向量进行相似度打分，加一个mlp层, 最后一层全连接
 
         '''
-        result = tf.concat(features, 1)
-        print result
+
+        result = tf.concat(features, -1)
 
         with tf.variable_scope('mlp'):
             node_nums = [self.feature_nums*2] + [self.mlp_hidden_node_nums] * self.mlp_layer_nums + [1]
             for i in range(len(node_nums) - 1):
+                now_w_init = tools.xavier_init(node_nums[i], node_nums[i+1])
                 w = tf.Variable(
-                    tf.random_uniform([node_nums[i], node_nums[i + 1]], -self.w_init, self.w_init),
+                    tf.random_uniform([node_nums[i], node_nums[i + 1]], -now_w_init, now_w_init),
                     name='weights' + str(i)
                 )
                 b = tf.Variable(tf.zeros([node_nums[i + 1]]), name="bias" + str(i))
                 result = tf.matmul(result, w) + b
-                result = tf.nn.sigmoid(result)
-
+                #result = tf.nn.sigmoid(result)
+                result = tf.nn.relu(result)
 
         # norms1 = tf.sqrt(tf.reduce_sum(tf.square(features[0]), 1, keep_dims=False))
         # norms2 = tf.sqrt(tf.reduce_sum(tf.square(features[1]), 1, keep_dims=False))
@@ -131,7 +135,7 @@ class DSSM(object):
         # relevance = relevance * w_r + b_r
         # relevance = tf.nn.softmax(relevance)
 
-        return result
+        return tf.reshape(result, [-1])
 
 
     def create_loss_max_condition_lh_op(self):
@@ -196,6 +200,9 @@ class DSSM(object):
             self.creat_feed_dict(query, doc, label)
             self.set_positive_weights(len(query))
 
+            # shape1, shape2, shape3 = sess.run([self.shape_1, self.shape_2, self.shape_3], feed_dict=self.feed_dict)
+            # print shape1, shape2, shape3
+
             if not is_valid:
                 # 跑这个train的时候 才更新W
                 _, loss_value, predict_query, predict_doc, relevance = sess.run([self.train, self.loss, self.predict_query\
@@ -239,7 +246,7 @@ class DSSM(object):
             average_loss, _ = self.run_epoch(sess, query_input, doc_input, labels)
             duration = time.time() - start_time
 
-            if (epoch+1) % 100 == 0:
+            if (epoch+1) % 10 == 0:
                 if valid_labels is None:
                     print('Epoch %d: loss = %.5f (%.3f sec)'
                         % (epoch+1, average_loss, duration))
