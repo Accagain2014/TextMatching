@@ -8,6 +8,7 @@ import sklearn
 
 import utils
 import tools
+import sys
 
 class DSSM(object):
     '''
@@ -15,7 +16,7 @@ class DSSM(object):
     '''
     def __init__(self, hash_tokens_nums=3000, dnn_layer_nums=1, dnn_hidden_node_nums=50, feature_nums=50,
                 batch_size=10, neg_nums=4, learning_rate=0.5, max_epochs=200, loss_kind='mcl', w_init=0.1, \
-                 save_model_path='./', mlp_hidden_node_nums=32, mlp_layer_nums=2):
+                 save_model_path='./', mlp_hidden_node_nums=32, mlp_layer_nums=2, input_is_sparse=False):
         '''
             paras:
                 hash_tokens_nums: word hash后词的个数
@@ -31,6 +32,7 @@ class DSSM(object):
                 save_model_path: 保存验证集上最优模型的文件路劲
                 mlp_hidden_node_nums: 学习到的隐向量连接后加mlp层的节点数
                 mlp_layer_nums： mlp层的层数
+                input_is_sparse: 输入是否是sparse矩阵
         '''
 
         self.hash_token_nums = hash_tokens_nums
@@ -47,12 +49,18 @@ class DSSM(object):
         self.save_model_path = save_model_path
         self.mlp_hidden_node_nums = mlp_hidden_node_nums
         self.mlp_layer_nums = mlp_layer_nums
+        self.input_is_sparse = input_is_sparse
 
         '''
             query and doc 使用不同的网络结构，像论文中提到的那样
         '''
-        self.input_q = tf.placeholder(tf.float32, shape=[None, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
-        self.input_doc = tf.placeholder(tf.float32, shape=[None, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
+        if not self.input_is_sparse:
+            self.input_q = tf.placeholder(tf.float32, shape=[None, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
+            self.input_doc = tf.placeholder(tf.float32, shape=[None, self.hash_token_nums]) # sample_nums, word_nums, hash_tokens_nums
+        else:
+            self.input_q = tf.sparse_placeholder(tf.float32, shape=[None, self.hash_token_nums])
+            self.input_doc = tf.sparse_placeholder(tf.float32, shape=[None, self.hash_token_nums])
+            
         self.label = tf.placeholder(tf.float32, shape=[None])
 
         self.predict_doc = None
@@ -84,24 +92,110 @@ class DSSM(object):
             structures[0]: self.input_q,
             structures[1]: self.input_doc
         }
-
-        for one_structrue in structures:
-            with tf.variable_scope(one_structrue):
-                node_nums = [self.hash_token_nums] + \
-                            [self.dnn_hidden_node_nums] * self.dnn_layer_nums + [self.feature_nums]
-                result = input_dict[one_structrue]
-                for i in range(len(node_nums)-1):
-                    now_w_init = tools.xavier_init(node_nums[i], node_nums[i+1])
-                    w = tf.Variable(
-                        tf.random_uniform([node_nums[i], node_nums[i+1]], -now_w_init, now_w_init), name='weights'+str(i)
-                    )
-                    # 网络比较深，参数比较多时，注意w取值应该比较小，学习率适当增大
-                    b = tf.Variable(tf.zeros([node_nums[i+1]]), name="bias"+str(i))
-                    result = tf.matmul(result, w) + b
-                    #result = tf.nn.sigmoid(result)
-                    #result = tf.nn.relu(result)
-                    result = tf.nn.tanh(result)
-                features.append(result)
+        
+        '''
+            尝试用一种结构试下
+        '''
+        
+        result = [0] * 2
+        with tf.variable_scope('DNN'):
+            now_w_init = tools.xavier_init(self.hash_token_nums, self.dnn_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.hash_token_nums, self.dnn_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer1')
+            b = tf.Variable(tf.zeros([self.dnn_hidden_node_nums]), name="bias_DNN_layer1")
+            
+            result[0] = input_dict['query_dnn']
+            result[1] = input_dict['doc_dnn']
+            
+            if self.input_is_sparse:
+                result[0] = tf.sparse_tensor_dense_matmul(result[0], w) + b
+                result[1] = tf.sparse_tensor_dense_matmul(result[1], w) + b
+                
+            else:
+                result[0] = tf.matmul(result[0], w) + b
+                result[1] = tf.matmul(result[1], w) + b
+            
+            result[0] = tf.nn.tanh(result[0])
+            result[1] = tf.nn.tanh(result[1])
+            
+            
+            now_w_init = tools.xavier_init(self.dnn_hidden_node_nums, self.dnn_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.dnn_hidden_node_nums, self.dnn_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer2')
+            b = tf.Variable(tf.zeros([self.dnn_hidden_node_nums]), name="bias_DNN_layer2")
+            result[0] = tf.matmul(result[0], w) + b
+            result[0] = tf.nn.tanh(result[0])
+            result[1] = tf.matmul(result[1], w) + b
+            result[1] = tf.nn.tanh(result[1])
+            
+            
+            now_w_init = tools.xavier_init(self.dnn_hidden_node_nums, self.dnn_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.dnn_hidden_node_nums, self.dnn_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer3')
+            b = tf.Variable(tf.zeros([self.dnn_hidden_node_nums]), name="bias_DNN_layer3")
+            result[0] = tf.matmul(result[0], w) + b
+            result[0] = tf.nn.tanh(result[0])
+            result[1] = tf.matmul(result[1], w) + b
+            result[1] = tf.nn.tanh(result[1])
+            
+            now_w_init = tools.xavier_init(self.dnn_hidden_node_nums, self.dnn_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.dnn_hidden_node_nums, self.dnn_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer4')
+            b = tf.Variable(tf.zeros([self.dnn_hidden_node_nums]), name="bias_DNN_layer4")
+            result[0] = tf.matmul(result[0], w) + b
+            result[0] = tf.nn.tanh(result[0])
+            result[1] = tf.matmul(result[1], w) + b
+            result[1] = tf.nn.tanh(result[1])
+            '''
+            
+            now_w_init = tools.xavier_init(self.dnn_hidden_node_nums, self.dnn_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.dnn_hidden_node_nums, self.dnn_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer5')
+            b = tf.Variable(tf.zeros([self.dnn_hidden_node_nums]), name="bias_DNN_layer5")
+            result[0] = tf.matmul(result[0], w) + b
+            result[0] = tf.nn.tanh(result[0])
+            result[1] = tf.matmul(result[1], w) + b
+            result[1] = tf.nn.tanh(result[1])
+            '''
+            
+            
+            now_w_init = tools.xavier_init(self.dnn_hidden_node_nums, self.feature_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.dnn_hidden_node_nums, self.feature_nums], -now_w_init, now_w_init), name='weights_DNN_layer_last')
+            b = tf.Variable(tf.zeros([self.feature_nums]), name="bias_DNN_layer_last")
+            result[0] = tf.matmul(result[0], w) + b
+            result[0] = tf.nn.tanh(result[0])
+            result[1] = tf.matmul(result[1], w) + b
+            result[1] = tf.nn.tanh(result[1])
+            
+            
+            '''
+            i = tf.constant(0)
+            sum_layer = self.dnn_layer_nums
+            #node_nums = tf.convert_to_tensor([self.dnn_hidden_node_nums] * self.dnn_layer_nums + [self.dnn_hidden_node_nums])
+            node_nums = [self.dnn_hidden_node_nums] * self.dnn_layer_nums + [self.dnn_hidden_node_nums]
+            
+            cond = lambda x, layer, result: tf.less(x, sum_layer)
+            layer = 0
+            def body(i, layer, result):
+                tmp = tf.add(i, 1)
+                w = tf.Variable(
+                        tf.random_uniform([node_nums[layer], node_nums[layer+1]], -self.w_init, self.w_init))
+                b = tf.Variable(tf.zeros([node_nums[layer+1]]))
+               
+                result[0] = tf.matmul(result[0], w) + b
+                result[0] = tf.nn.tanh(result[0])
+                result[1] = tf.matmul(result[1], w) + b
+                result[1] = tf.nn.tanh(result[1])
+                    
+                return tmp, layer, result
+                
+            i, _, result = tf.while_loop(cond, body, [i, layer, result])
+            '''   
+            
+            features.append(result[0])
+            features.append(result[1])
+        
 
         self.predict_query = features[0]
         self.predict_doc = features[1]
@@ -114,17 +208,61 @@ class DSSM(object):
         result = tf.concat(features, -1)
 
         with tf.variable_scope('mlp'):
-            node_nums = [self.feature_nums*2] + [self.mlp_hidden_node_nums] * self.mlp_layer_nums + [1]
-            for i in range(len(node_nums) - 1):
-                now_w_init = tools.xavier_init(node_nums[i], node_nums[i+1])
-                w = tf.Variable(
-                    tf.random_uniform([node_nums[i], node_nums[i + 1]], -now_w_init, now_w_init),
-                    name='weights' + str(i)
-                )
-                b = tf.Variable(tf.zeros([node_nums[i + 1]]), name="bias" + str(i))
-                result = tf.matmul(result, w) + b
-                #result = tf.nn.sigmoid(result)
-                result = tf.nn.relu(result)
+            node_nums = tf.convert_to_tensor([self.feature_nums*2] + [self.mlp_hidden_node_nums] * self.mlp_layer_nums + [1])
+            sum_layer = self.mlp_hidden_node_nums + 1
+            
+            
+            now_w_init = tools.xavier_init(self.feature_nums*2, self.mlp_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.feature_nums*2, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer1')
+            b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer1")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.tanh(result)
+            
+            '''
+            now_w_init = tools.xavier_init(self.mlp_hidden_node_nums, self.mlp_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.mlp_hidden_node_nums, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer2')
+            b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer2")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.tanh(result)
+            
+            now_w_init = tools.xavier_init(self.mlp_hidden_node_nums, self.mlp_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.mlp_hidden_node_nums, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer2')
+            b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer2")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.tanh(result)
+            
+            now_w_init = tools.xavier_init(self.mlp_hidden_node_nums, self.mlp_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.mlp_hidden_node_nums, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer3')
+            b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer3")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.tanh(result)
+            
+            now_w_init = tools.xavier_init(self.mlp_hidden_node_nums, self.mlp_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.mlp_hidden_node_nums, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer4')
+            b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer4")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.tanh(result)
+            
+            now_w_init = tools.xavier_init(self.mlp_hidden_node_nums, self.mlp_hidden_node_nums)
+            w = tf.Variable(
+                        tf.random_uniform([self.mlp_hidden_node_nums, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer5')
+            b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer5")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.tanh(result)
+            '''
+            
+            now_w_init = tools.xavier_init(self.mlp_hidden_node_nums, 1)
+            w = tf.Variable(
+                        tf.random_uniform([self.mlp_hidden_node_nums, 1], -now_w_init, now_w_init), name='weights_DNN_layer_last')
+            b = tf.Variable(tf.zeros([1]), name="bias_DNN_layer_last")
+            result = tf.matmul(result, w) + b
+            result = tf.nn.sigmoid(result)
+            
 
         # norms1 = tf.sqrt(tf.reduce_sum(tf.square(features[0]), 1, keep_dims=False))
         # norms2 = tf.sqrt(tf.reduce_sum(tf.square(features[1]), 1, keep_dims=False))
@@ -165,7 +303,8 @@ class DSSM(object):
             采用梯度下降方式学习
         :return:
         '''
-        return tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        return tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+        #return tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
 
 
     def creat_feed_dict(self, query_batch, doc_batch, label_batch):
@@ -175,11 +314,21 @@ class DSSM(object):
         :param label_batch: 查询和文档对应的相关性label
         :return:
         '''
-        self.feed_dict = {
-            self.input_q : query_batch,
-            self.input_doc: doc_batch,
-            self.label : label_batch
-        }
+
+        if self.input_is_sparse:
+            query_coo_matrix = query_batch.tocoo()
+            doc_coo_matrix = doc_batch.tocoo()
+            self.feed_dict = {
+                self.input_q : tf.SparseTensorValue(np.array([query_coo_matrix.row, query_coo_matrix.col]).T, query_batch.data, query_batch.shape),
+                self.input_doc : tf.SparseTensorValue(np.array([doc_coo_matrix.row, doc_coo_matrix.col]).T, doc_batch.data, doc_batch.shape),
+                self.label : label_batch
+            }
+        else:
+            self.feed_dict = {
+                self.input_q : query_batch,
+                self.input_doc: doc_batch,
+                self.label : label_batch
+            }
 
 
     def run_epoch(self, sess, query_input, doc_input, labels, is_valid=False):
@@ -193,12 +342,16 @@ class DSSM(object):
         '''
         average_loss = 0
         step = 0
+        relevance = []
+      
         for step, (query, doc, label) in enumerate(
-                utils.data_iterator(query_input, doc_input, labels, self.batch_size)
+                utils.data_iterator(query_input, doc_input, labels, self.batch_size, shuffle=True, is_normalize=True)
             ):
             # print query[1, 1], doc[1, 1], label[1]
             self.creat_feed_dict(query, doc, label)
-            self.set_positive_weights(len(query))
+            #print query.shape, doc.shape, label.shape
+            #print type(query),is_sparse
+            # self.set_positive_weights(len(query))
 
             # shape1, shape2, shape3 = sess.run([self.shape_1, self.shape_2, self.shape_3], feed_dict=self.feed_dict)
             # print shape1, shape2, shape3
@@ -243,22 +396,23 @@ class DSSM(object):
 
         for epoch in range(self.max_epochs):
             start_time = time.time()
-            average_loss, _ = self.run_epoch(sess, query_input, doc_input, labels)
+            average_loss, relevance = self.run_epoch(sess, query_input, doc_input, labels)
             duration = time.time() - start_time
 
-            if (epoch+1) % 10 == 0:
+            if (epoch+1) % 1 == 0:
                 if valid_labels is None:
-                    print('Epoch %d: loss = %.5f (%.3f sec)'
-                        % (epoch+1, average_loss, duration))
+                    print('Epoch %d: loss = %.5f relevance[0] = %.5f (%.3f sec)'
+                        % (epoch+1, average_loss, relevance[0], duration))
                 else:
                     valid_loss, _ = self.run_epoch(sess, valid_q_input, valid_d_input, valid_labels, is_valid=True)
                     if valid_loss < best_loss:
+                        print 'Save model'
                         best_loss = valid_loss
                         saver.save(sess, self.save_model_path)
                     duration = time.time() - start_time
-                    print('Epoch %d: loss = %.5f valid loss = %.5f (%.3f sec)'
-                          % (epoch+1, average_loss, valid_loss, duration))
-
+                    print('Epoch %d: loss = %.5f valid loss = %.5f relevance[0] = %.5f (%.3f sec)'
+                          % (epoch+1, average_loss, valid_loss, relevance[0], duration))
+                    sys.stdout.flush()
             losses.append(average_loss)
 
         if not valid_labels is None:
@@ -274,8 +428,18 @@ class DSSM(object):
         :param labels:
         :return:
         '''
-        self.creat_feed_dict(query, doc, labels)
-        predict = sess.run(self.relevance, feed_dict=self.feed_dict)
+        if not is_sparse:
+            self.creat_feed_dict(query, doc, labels)
+            predict = sess.run(self.relevance, feed_dict=self.feed_dict)
+        else:
+            predict = []
+            for step, (query_, doc_, label_) in enumerate(
+                utils.data_iterator(query, doc, labels, self.batch_size, shuffle=True, is_normalize=True)
+            ):
+                self.creat_feed_dict(query, doc, labels)
+                now_pre = sess.run(self.relevance, feed_dict=self.feed_dict)
+                predict += now_pre
+                
         return predict
 
 

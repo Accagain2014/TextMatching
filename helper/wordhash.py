@@ -1,8 +1,10 @@
 #coding=utf-8
 import numpy as np
+import pandas as pd
 import pickle
 import distance
 from scipy import sparse as sps
+import sys
 
 class WordHash(object):
 
@@ -105,9 +107,13 @@ class WordHash(object):
                     n_gram_count[sen_cnt, one_n_gram_index] += 1
             sen_cnt += 1
         if is_dump:
+            pd.to_pickle(n_gram_count.tocsr(), dump_file)
+            '''
             with open(dump_file, 'wb') as fw:
                 pickle.dump(n_gram_count.tocsr(), fw)
+            '''
             print 'Dump to file ', dump_file, ' done.'
+            sys.stdout.flush()
         print 'Get n_gram count matrix done, shape with: ', n_gram_count.shape
         return n_gram_count.tocsr()
 

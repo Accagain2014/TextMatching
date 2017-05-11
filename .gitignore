@@ -3,6 +3,7 @@ dataset/
 *.pkl
 result/
 config.py
+nohup.out
 
 # Compiled source #
 ###################
