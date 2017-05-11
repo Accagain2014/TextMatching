@@ -29,6 +29,7 @@ Implement the Classical Methods.
 <br> [Learning Deep Structured Semantic Models for Web Search using Clickthrough Data](https://posenhuang.github.io/papers/cikm2013_DSSM_fullversion.pdf)
 <br> CIKM 2013
 <br> 词袋模型,基于语义表达的结构, word hash + DNN 
+<br> [详细解释](http://www.leiphone.com/news/201607/TRldqYnzm6nRbEnY.html)
 -----
 > [**CDSSM**]() 
  <br> [Learning Semantic Representations Using Convolutional Neural Networks for Web Search](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/www2014_cdssm_p07.pdf)
