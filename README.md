@@ -3,14 +3,19 @@ Understanding the Methods in Text Matching Area Including Key-words based Matchi
 Implement the Classical Methods.
 
 ## Categories
-- Key-words based methods
-    - tf-idf model
-    - words common rate model
-    - find the most important word with adding syntax information
-- Semantic methods
-    - term bag models
-    - structure considered models
-- Features based methods
+- tradition model (feature based models)
+    - Key-words based methods
+        - tf-idf model
+        - words common rate model
+        - find the most important word with adding syntax information
+    - boosting models
+    - linear models
+    - factorization machine
+- Semantic deep model
+    - representation-based models
+        - DSSM, CDSSM
+    - interaction-based models
+
 
 ## People in these area
 - [Po-Sen Huang](https://posenhuang.github.io/full_publication.html)
@@ -30,6 +35,7 @@ Implement the Classical Methods.
 <br> CIKM 2013
 <br> 词袋模型,基于语义表达的结构, word hash + DNN 
 <br> [详细解释](http://www.leiphone.com/news/201607/TRldqYnzm6nRbEnY.html)
+<br> [代码](./DSSM/dssm.py)
 -----
 > [**CDSSM**]() 
  <br> [Learning Semantic Representations Using Convolutional Neural Networks for Web Search](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/www2014_cdssm_p07.pdf)
@@ -108,7 +114,7 @@ Natural Language Processing](https://www.microsoft.com/en-us/research/wp-content
 
 ## Competition
 * [Kaggle Quora Question Pairs](https://www.kaggle.com/c/quora-question-pairs)
-
+<br> [SQuAD(The Stanford Question Answering Dataset)](https://rajpurkar.github.io/SQuAD-explorer/)
 
 ## Pretrained Models
 * [Model Zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo "Berkeley Vision and Learning Center")

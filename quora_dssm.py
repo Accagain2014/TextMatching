@@ -1,19 +1,16 @@
 #coding=utf-8
-import tensorflow as tf
+import sys
+
 import numpy as np
-import pandas as pd
-from sklearn.datasets import dump_svmlight_file, load_svmlight_file, load_svmlight_files
-from scipy import sparse as sps
+import tensorflow as tf
+from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import KFold
 from sklearn.utils import shuffle
-import sys
-import pickle
-from sklearn.preprocessing import normalize
 
-from DSSM.dssm import DSSM
-from helper.wordhash import WordHash
-import tools
 import config
+from DSSM.dssm import DSSM
+from helper import tools
+
 
 def get_words(sentences):
     words = []

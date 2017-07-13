@@ -1,14 +1,14 @@
 #coding=utf-8
 
-import tensorflow as tf
-import pandas as pd
-import numpy as np
-import time
-import sklearn
-
-import utils
-import tools
 import sys
+sys.path.append('../helper/')
+import time
+
+import numpy as np
+import tensorflow as tf
+
+import tools
+
 
 class DSSM(object):
     '''
@@ -212,7 +212,7 @@ class DSSM(object):
             sum_layer = self.mlp_hidden_node_nums + 1
             
             
-            now_w_init = tools.xavier_init(self.feature_nums*2, self.mlp_hidden_node_nums)
+            now_w_init = tools.xavier_init(self.feature_nums * 2, self.mlp_hidden_node_nums)
             w = tf.Variable(
                         tf.random_uniform([self.feature_nums*2, self.mlp_hidden_node_nums], -now_w_init, now_w_init), name='weights_DNN_layer1')
             b = tf.Variable(tf.zeros([self.mlp_hidden_node_nums]), name="bias_DNN_layer1")
@@ -345,7 +345,7 @@ class DSSM(object):
         relevance = []
       
         for step, (query, doc, label) in enumerate(
-                utils.data_iterator(query_input, doc_input, labels, self.batch_size, shuffle=True, is_normalize=True)
+                tools.data_iterator(query_input, doc_input, labels, self.batch_size, shuffle=True, is_normalize=True)
             ):
             # print query[1, 1], doc[1, 1], label[1]
             self.creat_feed_dict(query, doc, label)
@@ -428,13 +428,13 @@ class DSSM(object):
         :param labels:
         :return:
         '''
-        if not is_sparse:
+        if not self.is_sparse:
             self.creat_feed_dict(query, doc, labels)
             predict = sess.run(self.relevance, feed_dict=self.feed_dict)
         else:
             predict = []
             for step, (query_, doc_, label_) in enumerate(
-                utils.data_iterator(query, doc, labels, self.batch_size, shuffle=True, is_normalize=True)
+                tools.data_iterator(query, doc, labels, self.batch_size, shuffle=True, is_normalize=True)
             ):
                 self.creat_feed_dict(query, doc, labels)
                 now_pre = sess.run(self.relevance, feed_dict=self.feed_dict)

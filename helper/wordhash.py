@@ -1,10 +1,12 @@
 #coding=utf-8
-import numpy as np
-import pandas as pd
 import pickle
-import distance
-from scipy import sparse as sps
 import sys
+
+import pandas as pd
+from scipy import sparse as sps
+
+from helper import distance
+
 
 class WordHash(object):
 
