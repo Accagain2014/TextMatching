@@ -124,6 +124,11 @@ Natural Language Processing](https://www.microsoft.com/en-us/research/wp-content
 * [GloVe](http://nlp.stanford.edu/projects/glove/ "Jeffrey Pennington, Richard Socher, Christopher D. Manning")
 * [SENNA](http://ronan.collobert.com/senna/ "R. Collobert, J. Weston, L. Bottou, M. Karlen, K. Kavukcuoglu, P. Kuksa")
 
+## Important Online Courses
+* [Stanford CS224d Deep Learning for Natural Language Processing](http://cs224d.stanford.edu/)
+* [Stanford CS20SI Tensorflow for Deep Learning Research](https://web.stanford.edu/class/cs20si/)
+* [Stanford CS231n Convolutional Neural Networks for Visual Recognition](http://cs231n.stanford.edu/)
+
 
 ## References
 https://github.com/robertsdionne/neural-network-papers/blob/master/README.md
